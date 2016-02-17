@@ -19,8 +19,13 @@ public class SudokuResolver {
 	};
 
 	int matrix[] = null;
+	int[][] cubeShadow = new int[9][];
 
 	public SudokuResolver(int matrix[]) {
+		setSudoku(matrix);
+	}
+
+	public void setSudoku(int matrix[]) {
 		this.matrix = matrix;
 	}
 
@@ -231,15 +236,23 @@ public class SudokuResolver {
 	}
 
 	/**
-	 * Count for number big than 0
+	 * Count a specific number or which big than 0
 	 * 
 	 * @param mask
+	 * @param number
 	 * @return
 	 */
-	int countAvailable(int[] mask) {
+	int countAvailable(int[] mask, Integer number) {
+		int[] cells = (null == mask ? matrix : mask);
+
 		int available = 0;
-		for (int i = 0; i < mask.length; i++) {
-			if (1 <= mask[i]) {
+		for (int i = 0; i < cells.length; i++) {
+			if (null != number) {
+				if (number.intValue() == cells[i]) {
+					available++;
+				}
+			}
+			else if (1 <= cells[i]) {
 				available++;
 			}
 		}
@@ -307,7 +320,114 @@ public class SudokuResolver {
 	 * @return
 	 */
 	public boolean isDone() {
-		return amount == countAvailable(matrix);
+		return amount == countAvailable(matrix, null);
+	}
+
+	/**
+	 * @param mask
+	 * @param number
+	 * @param cube
+	 * @return
+	 */
+	int[] checkHorizontalLines(int[] mask, final int number, final int cube) {
+		int line_base = getGlobalPositionForCube(0, cube) / group_size;
+
+		for (int line = 0 + line_base; line < unit_size + line_base; line++) {
+			int[] mask2 = prepareLineMask(checkLine(number, line, SudokuResolver.Direction.HORIZONTAL), line,
+					SudokuResolver.Direction.HORIZONTAL);
+			mask = applyMask(mask, mask2);
+		}
+
+		return mask;
+	}
+
+	/**
+	 * @param mask
+	 * @param number
+	 * @param cube
+	 * @return
+	 */
+	int[] checkVerticalLines(int[] mask, final int number, final int cube) {
+		int line_base = getGlobalPositionForCube(0, cube) % group_size;
+		for (int line = 0 + line_base; line < unit_size + line_base; line++) {
+			int[] mask2 = prepareLineMask(checkLine(number, line, SudokuResolver.Direction.VERTICAL), line,
+					SudokuResolver.Direction.VERTICAL);
+			mask = applyMask(mask, mask2);
+		}
+
+		return mask;
+	}
+
+	/**
+	 * Check cubes from vertical direction
+	 * 
+	 * @param mask
+	 * @param cube
+	 * @return
+	 */
+	int[] checkVerticalCubes(int[] mask, int cube) {
+		int shadowIndex = cube;
+		while ((shadowIndex = shadowIndex - unit_size) >= 0 && cube != 0) {
+			if (null != cubeShadow[shadowIndex]) {
+				logger.debug("Check cube shadow: " + shadowIndex);
+				int row = -1;
+				for (int i = 0; i < amount; i++) {
+					if (0 != cubeShadow[shadowIndex][i]) {
+						if (row != -1 && row != i % group_size) {
+							// If the number is not all in same line.
+							return mask;
+						}
+						row = i % group_size;
+					}
+				}
+
+				// If all the number is in same colum, we can believe this colum will be occupied, then we need mark it out from the mask.
+				if (row != -1) {
+					for (int i = row; i < amount; i += group_size) {
+						mask[i] = -1;
+					}
+				}
+			}
+		}
+
+		return mask;
+	}
+
+	/**
+	 * Check cubes from horizontal direction
+	 * 
+	 * @param mask
+	 * @param cube
+	 * @return
+	 */
+	int[] checkHorizontalCubes(int[] mask, int cube) {
+		int shadowIndex = cube - cube % 3;
+		while (shadowIndex < cube) {
+			if (null != cubeShadow[shadowIndex]) {
+				logger.debug("Check shadow: " + shadowIndex);
+				int colum = -1;
+				for (int i = 0; i < amount; i++) {
+					if (0 != cubeShadow[shadowIndex][i]) {
+						if (colum != -1 && colum != i / group_size) {
+							// If the number is not all in same line. we can't determine which line will be occupied.
+							return mask;
+						}
+						colum = i / group_size;
+					}
+				}
+
+				// If all the number is in same line, we can believe this line will be occupied, then we need mark it out from the mask.
+				if (colum != -1) {
+					for (int i = colum * group_size; i < (colum + 1) * group_size; i++) {
+						mask[i] = -1;
+					}
+				}
+
+				shadowIndex++;
+			}
+		}
+
+		return mask;
 	}
 
 	/**
@@ -315,48 +435,46 @@ public class SudokuResolver {
 	 * 
 	 * @param number
 	 */
-	public void fillNumber(final int number) {
+	void fillNumber(final int number) {
 		for (int cube = 0; cube < group_size; cube++) {
 			// Get a cube
-			int[] mask1 = prepareCubeMask(checkCube(number, cube), cube);
+			int[] mask = prepareCubeMask(checkCube(number, cube), cube);
 
-			if (countAvailable(mask1) > 0) {
+			if (countAvailable(mask, null) > 0) {
 				// Check horizontal
-				int line_base = getGlobalPositionForCube(0, cube) / group_size;
-
-				for (int line = 0 + line_base; line < unit_size + line_base; line++) {
-					int[] mask2 = prepareLineMask(checkLine(number, line, SudokuResolver.Direction.HORIZONTAL), line,
-							SudokuResolver.Direction.HORIZONTAL);
-					mask1 = applyMask(mask1, mask2);
-				}
-
+				mask = checkHorizontalLines(mask, number, cube);
 				// Check vertical
-				line_base = getGlobalPositionForCube(0, cube) % group_size;
-				for (int line = 0 + line_base; line < unit_size + line_base; line++) {
-					int[] mask2 = prepareLineMask(checkLine(number, line, SudokuResolver.Direction.VERTICAL), line,
-							SudokuResolver.Direction.VERTICAL);
-					mask1 = applyMask(mask1, mask2);
-				}
+				mask = checkVerticalLines(mask, number, cube);
+
+				// Check cube shadow
+				mask = checkHorizontalCubes(mask, cube);
+				printMatrix(mask);
+				printMatrix(null);
+				mask = checkVerticalCubes(mask, cube);
+				printMatrix(mask);
+				printMatrix(null);
 			}
 
 			//printMatrix(mask1);
-			mask1 = cropCube(mask1, cube, number);
+			cubeShadow[cube] = cropCube(mask, cube, number);
 
-			if (1 == countAvailable(mask1)) {
-				addToMatrix(mask1);
+			if (1 == countAvailable(cubeShadow[cube], null)) {
+				addToMatrix(cubeShadow[cube]);
 			}
 		}
 	}
 
 	protected void printMatrix(int[] matrix) {
+		int[] cells = null == matrix ? this.matrix : matrix;
+
 		System.out.println("------------------------------------------------------");
 		for (int i = 1; i < amount + 1; i++) {
-			System.out.format("%2d", matrix[i - 1]);
+			System.out.format("%2d", cells[i - 1]);
 			if (0 == i % group_size) {
-				System.out.println();
+				System.out.println(",");
 			}
 			else {
-				System.out.print("|");
+				System.out.print(",");
 			}
 		}
 		System.out.println("------------------------------------------------------");
@@ -368,10 +486,19 @@ public class SudokuResolver {
 	public void play() {
 		do {
 			resetModified();
-			for (int i = 1; i <= group_size; i++) {
-				fillNumber(i);
-				if (logger.isDebugEnabled())
+			for (int number = 1; number < group_size + 1; number++) {
+
+				if (9 == countAvailable(null, number)) {
+					// Skip, if the number is all filled.
+					logger.debug("Number: " + number + " is skiped.");
+					continue;
+				}
+
+				fillNumber(number);
+				if (logger.isDebugEnabled()) {
+					System.out.println(" Number: " + number);
 					printMatrix(matrix);
+				}
 				if (isDone())
 					break;
 			}
