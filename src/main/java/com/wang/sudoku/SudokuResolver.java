@@ -369,7 +369,7 @@ public class SudokuResolver {
 		int shadowIndex = cube;
 		while ((shadowIndex = shadowIndex - unit_size) >= 0 && cube != 0) {
 			if (null != cubeShadow[shadowIndex]) {
-				logger.debug("Check cube shadow: " + shadowIndex);
+				logger.debug("Check shadow cube: " + shadowIndex);
 				int row = -1;
 				for (int i = 0; i < amount; i++) {
 					if (0 != cubeShadow[shadowIndex][i]) {
@@ -404,7 +404,7 @@ public class SudokuResolver {
 		int shadowIndex = cube - cube % 3;
 		while (shadowIndex < cube) {
 			if (null != cubeShadow[shadowIndex]) {
-				logger.debug("Check cube shadow: " + shadowIndex);
+				logger.debug("Check shadow cube: " + shadowIndex);
 				int colum = -1;
 				for (int i = 0; i < amount; i++) {
 					if (0 != cubeShadow[shadowIndex][i]) {
@@ -483,22 +483,28 @@ public class SudokuResolver {
 		do {
 			resetModified();
 			for (int number = 1; number < group_size + 1; number++) {
-
 				if (9 == countAvailable(null, number)) {
-					// Skip, if the number is all filled.
+					// Skip, if the number is done.
 					logger.debug("Number: " + number + " is skiped.");
 					continue;
 				}
-
 				fillNumber(number);
+
 				if (logger.isDebugEnabled()) {
 					System.out.println(" Number: " + number);
 					printMatrix(matrix);
+					System.out.println(" Updated: " + isModified());
 				}
+
 				if (isDone())
 					break;
 			}
+
 			// End loop if game finished or no number could be signed in
-		} while (!isDone() && isModified());
+			if (!isModified()) {
+				logger.warn("It's tooooooooooooooooooooo hard!!");
+				break;
+			}
+		} while (!isDone());
 	}
 }
