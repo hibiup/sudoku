@@ -1,5 +1,8 @@
 package com.wang.sudoku;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.log4j.Logger;
 
 /**
@@ -18,8 +21,9 @@ public class SudokuResolver {
 		HORIZONTAL, VERTICAL
 	};
 
+	Integer[][][] hitOptions = new Integer[group_size][group_size][];
+	int[][] cubeShadow = new int[group_size][];
 	int matrix[] = null;
-	int[][] cubeShadow = new int[9][];
 
 	public SudokuResolver(int matrix[]) {
 		setSudoku(matrix);
@@ -242,21 +246,22 @@ public class SudokuResolver {
 	 * @param number
 	 * @return
 	 */
-	int countAvailable(int[] mask, Integer number) {
+	Integer[] countAvailable(int[] mask, Integer number) {
+		List<Integer> offset = new ArrayList<Integer>();
 		int[] cells = (null == mask ? matrix : mask);
 
-		int available = 0;
 		for (int i = 0; i < cells.length; i++) {
 			if (null != number) {
 				if (number.intValue() == cells[i]) {
-					available++;
+					offset.add(i);
 				}
 			}
 			else if (1 <= cells[i]) {
-				available++;
+				offset.add(i);
 			}
 		}
-		return available;
+		Integer[] stockArr = new Integer[offset.size()];
+		return offset.toArray(stockArr);
 	}
 
 	/**
@@ -320,7 +325,7 @@ public class SudokuResolver {
 	 * @return
 	 */
 	public boolean isDone() {
-		return amount == countAvailable(matrix, null);
+		return amount == countAvailable(matrix, null).length;
 	}
 
 	/**
@@ -440,7 +445,7 @@ public class SudokuResolver {
 			// Get a cube
 			int[] mask = prepareCubeMask(checkCube(number, cube), cube);
 
-			if (countAvailable(mask, null) > 0) {
+			if (countAvailable(mask, null).length > 0) {
 				// Check horizontal
 				mask = checkHorizontalLines(mask, number, cube);
 				// Check vertical
@@ -453,8 +458,9 @@ public class SudokuResolver {
 
 			//printMatrix(mask1);
 			cubeShadow[cube] = cropCube(mask, cube, number);
+			hitOptions[number - 1][cube] = countAvailable(cubeShadow[cube], null);
 
-			if (1 == countAvailable(cubeShadow[cube], null)) {
+			if (1 == hitOptions[number - 1][cube].length) {
 				addToMatrix(cubeShadow[cube]);
 			}
 		}
@@ -477,13 +483,55 @@ public class SudokuResolver {
 	}
 
 	/**
+	 * Generate a new sudoku based on the old one
+	 * 
+	 * @return
+	 */
+	int[] generateNewSudoku(int index) {
+		int chosenNumber = 1;
+		int chosenCube = 0;
+		int minimal = 0;
+
+		// To find a number with minimal option
+		for (int number = 1; number <= group_size; number++) {
+			for (int cube = 0; cube < group_size; cube++) {
+				Integer[] offsets = hitOptions[number - 1][cube];
+				if (null != offsets && offsets.length >= 2 && (minimal == 0 || offsets.length < minimal)) {
+					minimal = offsets.length;
+					chosenNumber = number;
+					chosenCube = cube;
+				}
+			}
+		}
+
+		// If no number can be choose
+		if (0 == minimal)
+			return null;
+
+		// If the option list is to the end
+		if (hitOptions[chosenNumber - 1][chosenCube].length <= index)
+			return null;
+
+		// Fill the chosen number to the old sudoku
+		Integer num = hitOptions[chosenNumber - 1][chosenCube][index];
+		int[] newMatrix = matrix.clone();
+		newMatrix[num] = chosenNumber;
+		logger.debug("Generate a new sudoku!");
+		if (logger.isDebugEnabled()) {
+			printMatrix(newMatrix);
+		}
+
+		return newMatrix;
+	}
+
+	/**
 	 * Game entrance
 	 */
-	public void play() {
+	boolean play() {
 		do {
 			resetModified();
 			for (int number = 1; number < group_size + 1; number++) {
-				if (9 == countAvailable(null, number)) {
+				if (9 == countAvailable(null, number).length) {
 					// Skip, if the number is done.
 					logger.debug("Number: " + number + " is skiped.");
 					continue;
@@ -500,11 +548,29 @@ public class SudokuResolver {
 					break;
 			}
 
-			// End loop if game finished or no number could be signed in
 			if (!isModified()) {
-				logger.warn("It's tooooooooooooooooooooo hard!!");
-				break;
+				// If game is not end but no number is obvious, we have to try to fill a number randomly
+				int index = 0;
+				int[] newSudoku = generateNewSudoku(index++);
+				while (null != newSudoku) {
+					// If new Sudoku is able to generated, start recursion.
+					SudokuResolver newResolver = new SudokuResolver(newSudoku);
+					if (newResolver.play()) {
+						// If the game is finished without failed.
+						this.matrix = newResolver.matrix;
+					}
+					else {
+						// try next randomly Sudoku
+						newSudoku = generateNewSudoku(index++);
+					}
+				}
+
+				if (null == newSudoku)
+					// If no more Sudoku could been generated, let's go back to the up level of the recursion.
+					return false;
 			}
 		} while (!isDone());
+
+		return isDone();
 	}
 }
