@@ -558,6 +558,7 @@ public class SudokuResolver {
 					if (newResolver.play()) {
 						// If the game is finished without failed.
 						this.matrix = newResolver.matrix;
+						break;
 					}
 					else {
 						// try next randomly Sudoku
@@ -572,5 +573,9 @@ public class SudokuResolver {
 		} while (!isDone());
 
 		return isDone();
+	}
+
+	public int[] getMatrix() {
+		return matrix;
 	}
 }
