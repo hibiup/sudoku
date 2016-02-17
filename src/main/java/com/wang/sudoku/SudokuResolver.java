@@ -404,7 +404,7 @@ public class SudokuResolver {
 		int shadowIndex = cube - cube % 3;
 		while (shadowIndex < cube) {
 			if (null != cubeShadow[shadowIndex]) {
-				logger.debug("Check shadow: " + shadowIndex);
+				logger.debug("Check cube shadow: " + shadowIndex);
 				int colum = -1;
 				for (int i = 0; i < amount; i++) {
 					if (0 != cubeShadow[shadowIndex][i]) {
@@ -448,11 +448,7 @@ public class SudokuResolver {
 
 				// Check cube shadow
 				mask = checkHorizontalCubes(mask, cube);
-				printMatrix(mask);
-				printMatrix(null);
 				mask = checkVerticalCubes(mask, cube);
-				printMatrix(mask);
-				printMatrix(null);
 			}
 
 			//printMatrix(mask1);
