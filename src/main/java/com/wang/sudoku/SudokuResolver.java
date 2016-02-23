@@ -9,6 +9,8 @@ import org.apache.log4j.Logger;
  * Hello world!
  */
 public class SudokuResolver {
+	static int recursionTimes = 0;
+	static int maskTimes = 0;
 	Logger logger = Logger.getLogger(this.getClass().toString());
 
 	static final int unit_size = 3;
@@ -260,8 +262,13 @@ public class SudokuResolver {
 				offset.add(i);
 			}
 		}
-		Integer[] stockArr = new Integer[offset.size()];
-		return offset.toArray(stockArr);
+
+		return toArray(offset);
+	}
+
+	Integer[] toArray(List<Integer> list) {
+		Integer[] arr = new Integer[list.size()];
+		return list.toArray(arr);
 	}
 
 	/**
@@ -406,7 +413,7 @@ public class SudokuResolver {
 	 * @return
 	 */
 	int[] checkHorizontalCubes(int[] mask, int cube) {
-		int shadowIndex = cube - cube % 3;
+		int shadowIndex = cube - cube % unit_size;
 		while (shadowIndex < cube) {
 			if (null != cubeShadow[shadowIndex]) {
 				logger.debug("Check shadow cube: " + shadowIndex);
@@ -441,6 +448,7 @@ public class SudokuResolver {
 	 * @param number
 	 */
 	void fillNumber(final int number) {
+		++maskTimes;
 		for (int cube = 0; cube < group_size; cube++) {
 			// Get a cube
 			int[] mask = prepareCubeMask(checkCube(number, cube), cube);
@@ -508,14 +516,25 @@ public class SudokuResolver {
 		if (0 == minimal)
 			return null;
 
+		/*List<Integer> optionList = Arrays.asList(hitOptions[chosenNumber - 1][chosenCube]);
+		optionList = new ArrayList<Integer>(optionList);
+		int randomNum = 0 + (int) (Math.random() * optionList.size());
+		int option = optionList.remove(randomNum);
+		
+		if (0 == optionList.size())
+			hitOptions[chosenNumber - 1][chosenCube] = null;
+		else
+			hitOptions[chosenNumber - 1][chosenCube] = toArray(optionList);*/
+
 		// If the option list is to the end
 		if (hitOptions[chosenNumber - 1][chosenCube].length <= index)
 			return null;
 
 		// Fill the chosen number to the old sudoku
-		Integer num = hitOptions[chosenNumber - 1][chosenCube][index];
+		Integer option = hitOptions[chosenNumber - 1][chosenCube][index];
+
 		int[] newMatrix = matrix.clone();
-		newMatrix[num] = chosenNumber;
+		newMatrix[option] = chosenNumber;
 		logger.debug("Generate a new sudoku!");
 		if (logger.isDebugEnabled()) {
 			printMatrix(newMatrix);
@@ -528,6 +547,7 @@ public class SudokuResolver {
 	 * Game entrance
 	 */
 	boolean play() {
+		++recursionTimes;
 		do {
 			resetModified();
 			for (int number = 1; number < group_size + 1; number++) {
@@ -549,30 +569,41 @@ public class SudokuResolver {
 			}
 
 			if (!isModified()) {
-				// If game is not end but no number is obvious, we have to try to fill a number randomly
-				int index = 0;
-				int[] newSudoku = generateNewSudoku(index++);
-				while (null != newSudoku) {
-					// If new Sudoku is able to generated, start recursion.
-					SudokuResolver newResolver = new SudokuResolver(newSudoku);
-					if (newResolver.play()) {
-						// If the game is finished without failed.
-						this.matrix = newResolver.matrix;
-						break;
-					}
-					else {
-						// try next randomly Sudoku
-						newSudoku = generateNewSudoku(index++);
-					}
+				if (!isModified()) {
+					doRecursion();
 				}
-
-				if (null == newSudoku)
-					// If no more Sudoku could been generated, let's go back to the up level of the recursion.
-					return false;
 			}
 		} while (!isDone());
 
 		return isDone();
+	}
+
+	/**
+	 * @return
+	 */
+	boolean doRecursion() {
+		int index = 0;
+		// If game is not end but no number is obvious, we have to try to fill a number randomly
+		int[] newSudoku = generateNewSudoku(index++);
+		while (null != newSudoku) {
+			// If new Sudoku is able to generated, start recursion.
+			SudokuResolver newResolver = new SudokuResolver(newSudoku);
+			if (newResolver.play()) {
+				// If the game is finished without failed.
+				this.matrix = newResolver.matrix;
+				break;
+			}
+			else {
+				// try next randomly Sudoku
+				newSudoku = generateNewSudoku(index++);
+			}
+		}
+
+		if (null == newSudoku)
+			// If no more Sudoku could been generated, let's go back to the up level of the recursion.
+			return false;
+
+		return true;
 	}
 
 	public int[] getMatrix() {

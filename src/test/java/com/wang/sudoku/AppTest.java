@@ -1,5 +1,8 @@
 package com.wang.sudoku;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
@@ -153,5 +156,35 @@ public class AppTest extends TestCase {
 		app.printMatrix(app.getMatrix());
 		app.play();
 		app.printMatrix(app.getMatrix());
+		System.out.print(app.recursionTimes);
+	}
+
+	// Evil 3
+	public void testEvil3() {
+		/*
+		  0, 0, 0, 0, 0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0, 0, 0, 0, 0
+		 */
+		SudokuResolver app = new SudokuResolver(new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
+
+		SimpleDateFormat format = new SimpleDateFormat("yyyy-mm-dd hh:ss SSS");
+		Date startTime = new Date();
+		app.play();
+		Date endTime = new Date();
+
+		app.printMatrix(app.getMatrix());
+		System.out.println(" Mask times: " + app.maskTimes);
+		System.out.println(" Recursion times: " + app.recursionTimes);
+		System.out.println(format.format(startTime));
+		System.out.println(format.format(endTime));
 	}
 }
