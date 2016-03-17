@@ -526,7 +526,7 @@ public class SudokuResolver {
 		else
 			hitOptions[chosenNumber - 1][chosenCube] = toArray(optionList);*/
 
-		// If the option list is to the end
+		// If the option list is end
 		if (hitOptions[chosenNumber - 1][chosenCube].length <= index)
 			return null;
 
@@ -569,9 +569,7 @@ public class SudokuResolver {
 			}
 
 			if (!isModified()) {
-				if (!isModified()) {
-					doRecursion();
-				}
+				return doRecursion();
 			}
 		} while (!isDone());
 
